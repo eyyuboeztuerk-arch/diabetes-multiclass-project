@@ -264,3 +264,9 @@ $RECYCLE.BIN/
 data/
 *.pkl
 
+__pycache__
+
+data
+models
+*.png
+
