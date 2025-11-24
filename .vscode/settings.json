@@ -68,5 +68,8 @@
     "**/*.pyc": true,
     ".pytest_cache": true,
     ".ruff_cache": true
-  }
+  },
+  "python.analysis.extraPaths": [
+    "./src/core"
+  ]
 }
