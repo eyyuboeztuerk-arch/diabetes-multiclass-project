@@ -149,3 +149,56 @@ def save_processed_data(
     """
     df.to_csv(filepath, index=False)
     print(f"Data saved: {filepath}")
+
+
+def scale_continuous_features(
+    features_train: pd.DataFrame, features_test: pd.DataFrame, continuous_features: list
+) -> Tuple:
+    """
+    Scales only continuous/quasi-continuous features using StandardScaler
+
+    Args:
+        features_train: Training features
+        features_test: Test features
+        continuous_features: List of continuous feature names to scale
+
+    Returns:
+        Tuple (features_train_scaled, features_test_scaled, scaler)
+    """
+    # Separate continuous and other features
+    other_features = [
+        col for col in features_train.columns if col not in continuous_features
+    ]
+
+    # Scale only continuous features
+    scaler = StandardScaler()
+    train_continuous_scaled = scaler.fit_transform(features_train[continuous_features])
+    test_continuous_scaled = scaler.transform(features_test[continuous_features])
+
+    # Convert to DataFrame
+    train_continuous_scaled_df = pd.DataFrame(
+        train_continuous_scaled, columns=continuous_features, index=features_train.index
+    )
+    test_continuous_scaled_df = pd.DataFrame(
+        test_continuous_scaled, columns=continuous_features, index=features_test.index
+    )
+
+    # Concatenate scaled continuous features with other features
+    features_train_scaled = pd.concat(
+        [train_continuous_scaled_df, features_train[other_features]], axis=1
+    )
+
+    features_test_scaled = pd.concat(
+        [test_continuous_scaled_df, features_test[other_features]], axis=1
+    )
+
+    # Reorder columns to match original order
+    features_train_scaled = features_train_scaled[features_train.columns]
+    features_test_scaled = features_test_scaled[features_test.columns]
+
+    print(
+        f"\n✓ Scaled {len(continuous_features)} continuous features: {continuous_features}"
+    )
+    print(f"Kept {len(other_features)} binary/ordinal features unchanged")
+
+    return features_train_scaled, features_test_scaled, scaler
