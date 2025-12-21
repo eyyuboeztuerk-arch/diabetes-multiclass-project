@@ -3,7 +3,7 @@ Preprocessing Module
 Functions for data preprocessing and feature engineering
 """
 
-from typing import Tuple
+from typing import List, Tuple
 
 import pandas as pd
 from imblearn.over_sampling import SMOTE
@@ -16,7 +16,7 @@ def check_data_quality(df: pd.DataFrame) -> dict:
     Checks data quality
 
     Args:
-        df: DataFrame with data
+        df: DataFrame with the data
 
     Returns:
         Dictionary with quality metrics
@@ -35,7 +35,7 @@ def remove_duplicates(df: pd.DataFrame) -> pd.DataFrame:
     Removes duplicates from the dataset
 
     Args:
-        df: DataFrame with data
+        df: DataFrame with the data
 
     Returns:
         DataFrame without duplicates
@@ -57,8 +57,8 @@ def create_train_test_split(
     Creates train-test split
 
     Args:
-        features: Feature DataFrame
-        target: Target Series
+        features: Features
+        target: Target
         test_size: Size of test set
         random_state: Random seed
 
@@ -83,7 +83,10 @@ def create_train_test_split(
 
 def scale_features(features_train: pd.DataFrame, features_test: pd.DataFrame) -> Tuple:
     """
-    Scales features using StandardScaler
+    Scales features with StandardScaler (all features)
+
+    Note: This function scales ALL features. For selective scaling of only
+    continuous features, use scale_continuous_features() instead.
 
     Args:
         features_train: Training features
@@ -109,53 +112,18 @@ def scale_features(features_train: pd.DataFrame, features_test: pd.DataFrame) ->
     return features_train_scaled, features_test_scaled, scaler
 
 
-def apply_smote(
-    features_train: pd.DataFrame, target_train: pd.Series, random_state: int = 42
-) -> Tuple:
-    """
-    Applies SMOTE for class balancing
-
-    Args:
-        features_train: Training features
-        target_train: Training target
-        random_state: Random seed
-
-    Returns:
-        Tuple (features_train_resampled, target_train_resampled)
-    """
-    print("Before SMOTE:")
-    print(target_train.value_counts().sort_index())
-
-    smote = SMOTE(random_state=random_state)
-    features_train_resampled, target_train_resampled = smote.fit_resample(  # pyright: ignore[reportAssignmentType]
-        features_train, target_train
-    )  # pyright: ignore[reportAssignmentType]
-
-    print("\nAfter SMOTE:")
-    print(pd.Series(target_train_resampled).value_counts().sort_index())  # pyright: ignore[reportArgumentType, reportCallIssue]
-
-    return features_train_resampled, target_train_resampled
-
-
-def save_processed_data(
-    df: pd.DataFrame, filepath: str = "data/processed/diabetes_012_processed.csv"
-) -> None:
-    """
-    Saves processed data
-
-    Args:
-        df: DataFrame with processed data
-        filepath: Target path
-    """
-    df.to_csv(filepath, index=False)
-    print(f"Data saved: {filepath}")
-
-
 def scale_continuous_features(
-    features_train: pd.DataFrame, features_test: pd.DataFrame, continuous_features: list
+    features_train: pd.DataFrame,
+    features_test: pd.DataFrame,
+    continuous_features: List[str],
 ) -> Tuple:
     """
     Scales only continuous/quasi-continuous features using StandardScaler
+
+    This function follows industry best practices:
+    - Binary features (0/1): No scaling needed
+    - Ordinal features (already label-encoded): No scaling needed
+    - Continuous features: Apply StandardScaler
 
     Args:
         features_train: Training features
@@ -199,6 +167,48 @@ def scale_continuous_features(
     print(
         f"\n✓ Scaled {len(continuous_features)} continuous features: {continuous_features}"
     )
-    print(f"Kept {len(other_features)} binary/ordinal features unchanged")
+    print(f"✓ Kept {len(other_features)} binary/ordinal features unchanged")
 
     return features_train_scaled, features_test_scaled, scaler
+
+
+def apply_smote(
+    features_train: pd.DataFrame, target_train: pd.Series, random_state: int = 42
+) -> Tuple:
+    """
+    Applies SMOTE for class balancing
+
+    Args:
+        features_train: Training features
+        target_train: Training target
+        random_state: Random seed
+
+    Returns:
+        Tuple (features_train_resampled, target_train_resampled)
+    """
+    print("Before SMOTE:")
+    print(target_train.value_counts().sort_index())
+
+    smote = SMOTE(random_state=random_state)
+    features_train_resampled, target_train_resampled = smote.fit_resample(  # pyright: ignore[reportAssignmentType]
+        features_train, target_train
+    )
+
+    print("\nAfter SMOTE:")
+    print(pd.Series(target_train_resampled).value_counts().sort_index())  # pyright: ignore[reportArgumentType, reportCallIssue]
+
+    return features_train_resampled, target_train_resampled
+
+
+def save_processed_data(
+    df: pd.DataFrame, filepath: str = "data/processed/diabetes_012_processed.csv"
+) -> None:
+    """
+    Saves processed data
+
+    Args:
+        df: DataFrame with processed data
+        filepath: Target path
+    """
+    df.to_csv(filepath, index=False)
+    print(f"Data saved: {filepath}")
