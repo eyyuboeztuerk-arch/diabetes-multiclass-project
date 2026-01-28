@@ -465,11 +465,11 @@ def plot_roc_curves(
         roc_auc = dict()
 
         for i in range(n_classes):
-            fpr[i], tpr[i], _ = roc_curve(target_bin[:, i], y_score[:, i]) # type: ignore
+            fpr[i], tpr[i], _ = roc_curve(target_bin[:, i], y_score[:, i])  # type: ignore
             roc_auc[i] = auc(fpr[i], tpr[i])
 
         # Calculate micro-average ROC curve and AUC
-        fpr["micro"], tpr["micro"], _ = roc_curve(target_bin.ravel(), y_score.ravel()) # pyright: ignore[reportAttributeAccessIssue]
+        fpr["micro"], tpr["micro"], _ = roc_curve(target_bin.ravel(), y_score.ravel())  # pyright: ignore[reportAttributeAccessIssue]
         roc_auc["micro"] = auc(fpr["micro"], tpr["micro"])
 
         # Plot micro-average ROC curve
@@ -571,5 +571,37 @@ def load_model(filepath: str):
     model = joblib.load(filepath)
 
     print(f"Model loaded: {filepath}")
+
+    return model
+
+
+def train_linear_svm(features: pd.DataFrame, target: pd.Series):
+    """
+    Trains LinearSVM model (optimized for recall, much faster than RBF-SVM)
+
+    LinearSVC is used instead of SVC with RBF kernel for computational efficiency.
+    It's 10-100x faster and suitable for large datasets.
+
+    Args:
+        features: Training features
+        target: Training target
+
+    Returns:
+        Trained LinearSVM model (calibrated for probability estimates)
+    """
+    from sklearn.calibration import CalibratedClassifierCV
+    from sklearn.svm import LinearSVC
+
+    # Train LinearSVC (much faster than SVC with RBF)
+    linear_svm = LinearSVC(
+        class_weight="balanced",  # Prioritize minority classes
+        max_iter=1000,  # Maximum iterations for convergence
+        random_state=42,  # For reproducibility
+    )
+
+    # Wrap with CalibratedClassifierCV to get probability estimates
+    # This is needed for ROC curves and probability-based predictions
+    model = CalibratedClassifierCV(linear_svm, cv=3)
+    model.fit(features, target)
 
     return model
