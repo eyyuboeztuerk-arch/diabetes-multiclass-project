@@ -15,6 +15,7 @@ import seaborn as sns
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
+    ConfusionMatrixDisplay,
     accuracy_score,
     auc,
     classification_report,
@@ -261,42 +262,17 @@ def evaluate_model(model, features: pd.DataFrame, target: pd.Series) -> dict:
 
 
 def plot_confusion_matrix(
-    model,
-    features: pd.DataFrame,
-    target: pd.Series,
-    ax=None,
-    title: str = "Confusion Matrix",
+    model, features: pd.DataFrame, target: pd.Series, model_name: str, ax=None
 ):
     """
-    Plots confusion matrix for model predictions
-
-    Confusion matrix shows the distribution of predictions vs actual labels.
-    It's essential for understanding which classes are confused with each other
-    and identifying false negatives (missed diabetes cases).
+    Plots confusion matrix for a trained model
 
     Args:
         model: Trained model
         features: Test features
-        target: Test target (true labels)
-        ax: Matplotlib axis (optional)
-        title: Plot title
-
-    Confusion Matrix Layout:
-        - Rows: Actual classes (true labels)
-        - Columns: Predicted classes (model predictions)
-        - Diagonal: Correct predictions
-        - Off-diagonal: Misclassifications
-
-    Medical Context:
-        For HIGH RECALL, we want:
-        - High values on diagonal (correct predictions)
-        - Low values in rows (few false negatives)
-        - False negatives (bottom-left) are most critical errors
-
-    Example:
-        If row 2 (Diabetes) has many values in columns 0 or 1,
-        it means we're missing diabetes cases (FALSE NEGATIVES).
-        This is the worst type of error in medical screening.
+        target: Test target
+        model_name: Name of the model for the title
+        ax: Matplotlib axis object (optional)
     """
     # Make predictions
     predictions = model.predict(features)
@@ -304,190 +280,132 @@ def plot_confusion_matrix(
     # Calculate confusion matrix
     cm = confusion_matrix(target, predictions)
 
-    # Create plot
+    # Create display
     if ax is None:
         fig, ax = plt.subplots(figsize=(8, 6))
 
-    # Plot heatmap
-    sns.heatmap(
-        cm,
-        annot=True,
-        fmt="d",
-        cmap="Blues",
-        xticklabels=["No Diabetes", "Prediabetes", "Diabetes"],
-        yticklabels=["No Diabetes", "Prediabetes", "Diabetes"],
-        ax=ax,
-        cbar_kws={"label": "Count"},
+    disp = ConfusionMatrixDisplay(
+        confusion_matrix=cm, display_labels=["No Diabetes", "Prediabetes", "Diabetes"]
     )
 
-    ax.set_xlabel("Predicted Label", fontsize=12, fontweight="bold")
-    ax.set_ylabel("True Label", fontsize=12, fontweight="bold")
-    ax.set_title(title, fontsize=14, fontweight="bold")
+    disp.plot(ax=ax, cmap="Blues", values_format="d")
+    ax.set_title(f"Confusion Matrix - {model_name}", fontsize=14, fontweight="bold")
+    ax.set_xlabel("Predicted Label", fontsize=12)
+    ax.set_ylabel("True Label", fontsize=12)
 
     return ax
 
 
 def plot_classification_report(
-    model,
-    features: pd.DataFrame,
-    target: pd.Series,
-    ax=None,
-    title: str = "Classification Report",
+    model, features: pd.DataFrame, target: pd.Series, model_name: str, ax=None
 ):
     """
-    Plots classification report as heatmap
-
-    Classification report shows per-class metrics (precision, recall, f1-score).
-    This is crucial for understanding model performance on each diabetes category.
+    Plots classification report as a heatmap
 
     Args:
         model: Trained model
         features: Test features
-        target: Test target (true labels)
-        ax: Matplotlib axis (optional)
-        title: Plot title
-
-    Per-Class Metrics:
-        - Class 0 (No Diabetes): Usually high recall (majority class)
-        - Class 1 (Prediabetes): Critical to detect for early intervention
-        - Class 2 (Diabetes): Most critical to detect for immediate treatment
-
-    Medical Context:
-        - Class 2 (Diabetes) recall should be highest (most critical)
-        - Class 1 (Prediabetes) recall should be high (early intervention)
-        - Class 0 (No Diabetes) recall can be slightly lower (false alarms acceptable)
-
-    Macro Average: Unweighted mean (treats all classes equally)
-    Weighted Average: Weighted by class frequency (accounts for imbalance)
+        target: Test target
+        model_name: Name of the model for the title
+        ax: Matplotlib axis object (optional)
     """
     # Make predictions
     predictions = model.predict(features)
 
-    # Get classification report as dictionary
+    # Generate classification report as dictionary
     report = classification_report(
         target,
         predictions,
         target_names=["No Diabetes", "Prediabetes", "Diabetes"],
         output_dict=True,
-        zero_division=0,
     )
 
-    # Convert to DataFrame for plotting
-    report_df = pd.DataFrame(report).transpose()
-    report_df = report_df.drop(["support"], axis=1)  # Remove support column
+    # Extract metrics for each class
+    classes = ["No Diabetes", "Prediabetes", "Diabetes"]
+    metrics = ["precision", "recall", "f1-score"]
 
-    # Create plot
+    # Create matrix for heatmap
+    data = []
+    for cls in classes:
+        data.append([report[cls][metric] for metric in metrics])  # pyright: ignore[reportArgumentType]
+
+    # Create DataFrame
+    df_report = pd.DataFrame(
+        data, index=classes, columns=["Precision", "Recall", "F1-Score"]
+    )
+
+    # Create heatmap
     if ax is None:
         fig, ax = plt.subplots(figsize=(8, 6))
 
-    # Plot heatmap
     sns.heatmap(
-        report_df.iloc[:-3, :],
+        df_report,
         annot=True,
         fmt=".3f",
         cmap="RdYlGn",
         vmin=0,
         vmax=1,
-        ax=ax,
         cbar_kws={"label": "Score"},
+        ax=ax,
     )
 
-    ax.set_xlabel("Metrics", fontsize=12, fontweight="bold")
-    ax.set_ylabel("Classes", fontsize=12, fontweight="bold")
-    ax.set_title(title, fontsize=14, fontweight="bold")
+    ax.set_title(
+        f"Classification Report - {model_name}", fontsize=14, fontweight="bold"
+    )
+    ax.set_xlabel("Metrics", fontsize=12)
+    ax.set_ylabel("Classes", fontsize=12)
 
     return ax
 
 
 def plot_roc_curves(
-    models: dict,
-    features: pd.DataFrame,
-    target: pd.Series,
-    ax=None,
-    title: str = "ROC Curves",
+    model, features: pd.DataFrame, target: pd.Series, model_name: str, ax=None
 ):
     """
-    Plots ROC curves for all models and classes
-
-    ROC (Receiver Operating Characteristic) curve shows the trade-off
-    between true positive rate (recall) and false positive rate at
-    different classification thresholds.
+    Plots ROC curves for multi-class classification
 
     Args:
-        models: Dictionary of {model_name: model}
+        model: Trained model
         features: Test features
-        target: Test target (true labels)
-        ax: Matplotlib axis (optional)
-        title: Plot title
-
-    ROC Curve Interpretation:
-        - X-axis: False Positive Rate (FPR) = FP/(FP+TN)
-        - Y-axis: True Positive Rate (TPR) = Recall = TP/(TP+FN)
-        - AUC (Area Under Curve): Overall model performance (0.5-1.0)
-        - Diagonal line: Random classifier (AUC=0.5)
-        - Top-left corner: Perfect classifier (AUC=1.0)
-
-    Medical Context:
-        For HIGH RECALL optimization:
-        - We want curves close to top-left corner
-        - High TPR (Recall) even at cost of higher FPR
-        - AUC closer to 1.0 indicates better discrimination
-        - Willing to accept higher FPR to maximize TPR (recall)
-
-    Note:
-        For multi-class problems, ROC curves are calculated using
-        one-vs-rest approach (each class vs all others).
+        target: Test target
+        model_name: Name of the model for the title
+        ax: Matplotlib axis object (optional)
     """
-    # Create plot
-    if ax is None:
-        fig, ax = plt.subplots(figsize=(10, 8))
+    # Get probability predictions
+    if hasattr(model, "predict_proba"):
+        target_proba = model.predict_proba(features)
+    else:
+        # For models without predict_proba (shouldn't happen with our models)
+        target_proba = model.decision_function(features)
 
-    # Binarize target for multi-class ROC
-    # One-vs-rest approach: each class vs all others
+    # Binarize the target for multi-class ROC
     target_bin = label_binarize(target, classes=[0, 1, 2])
     n_classes = target_bin.shape[1]
 
-    # Define colors for different models
-    colors = ["blue", "red", "green", "orange", "purple"]
+    # Create plot
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(8, 6))
 
-    # Plot ROC curve for each model
-    for idx, (model_name, model) in enumerate(models.items()):
-        # Get probability predictions
-        if hasattr(model, "predict_proba"):
-            y_score = model.predict_proba(features)
-        else:
-            # For models without predict_proba (e.g., SVM without probability=True)
-            continue
+    # Plot ROC curve for each class
+    colors = ["blue", "orange", "green"]
+    class_names = ["No Diabetes", "Prediabetes", "Diabetes"]
 
-        # Calculate ROC curve and AUC for each class
-        fpr = dict()
-        tpr = dict()
-        roc_auc = dict()
+    for i, color, class_name in zip(range(n_classes), colors, class_names):
+        fpr, tpr, _ = roc_curve(target_bin[:, i], target_proba[:, i])  # pyright: ignore[reportIndexIssue]
+        roc_auc = auc(fpr, tpr)
 
-        for i in range(n_classes):
-            fpr[i], tpr[i], _ = roc_curve(target_bin[:, i], y_score[:, i])  # type: ignore
-            roc_auc[i] = auc(fpr[i], tpr[i])
-
-        # Calculate micro-average ROC curve and AUC
-        fpr["micro"], tpr["micro"], _ = roc_curve(target_bin.ravel(), y_score.ravel())  # pyright: ignore[reportAttributeAccessIssue]
-        roc_auc["micro"] = auc(fpr["micro"], tpr["micro"])
-
-        # Plot micro-average ROC curve
         ax.plot(
-            fpr["micro"],
-            tpr["micro"],
-            label=f"{model_name} (AUC = {roc_auc['micro']:.3f})",
-            color=colors[idx % len(colors)],
-            linewidth=2,
+            fpr, tpr, color=color, lw=2, label=f"{class_name} (AUC = {roc_auc:.3f})"
         )
 
     # Plot diagonal line (random classifier)
-    ax.plot([0, 1], [0, 1], "k--", linewidth=1, label="Random Classifier (AUC = 0.5)")
+    ax.plot([0, 1], [0, 1], "k--", lw=2, label="Random Classifier")
 
-    # Configure plot
-    ax.set_xlabel("False Positive Rate", fontsize=12, fontweight="bold")
-    ax.set_ylabel("True Positive Rate (Recall)", fontsize=12, fontweight="bold")
-    ax.set_title(title, fontsize=14, fontweight="bold")
+    ax.set_xlim([0.0, 1.0])  # pyright: ignore[reportArgumentType]
+    ax.set_ylim([0.0, 1.05])  # pyright: ignore[reportArgumentType]
+    ax.set_xlabel("False Positive Rate", fontsize=12)
+    ax.set_ylabel("True Positive Rate (Recall)", fontsize=12)
+    ax.set_title(f"ROC Curves - {model_name}", fontsize=14, fontweight="bold")
     ax.legend(loc="lower right", fontsize=10)
     ax.grid(alpha=0.3)
 
