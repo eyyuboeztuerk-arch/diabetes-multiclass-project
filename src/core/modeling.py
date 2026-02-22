@@ -342,7 +342,7 @@ def plot_classification_report(
         df_report,
         annot=True,
         fmt=".3f",
-        cmap="RdYlGn",
+        # cmap="RdYlGn",
         vmin=0,
         vmax=1,
         cbar_kws={"label": "Score"},
