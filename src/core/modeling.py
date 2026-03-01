@@ -10,25 +10,30 @@ This module contains functions for:
 - Saving/loading trained models
 """
 
-import pandas as pd
-import numpy as np
+from typing import Dict
+
+import joblib
 import matplotlib.pyplot as plt
+import pandas as pd
 import seaborn as sns
-from sklearn.linear_model import LogisticRegression
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.svm import LinearSVC
 from sklearn.calibration import CalibratedClassifierCV
-from xgboost import XGBClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import (
-    classification_report, confusion_matrix,
-    accuracy_score, f1_score, roc_auc_score,
-    precision_score, recall_score,
-    ConfusionMatrixDisplay, roc_curve, auc
+    ConfusionMatrixDisplay,
+    accuracy_score,
+    auc,
+    classification_report,
+    confusion_matrix,
+    f1_score,
+    precision_score,
+    recall_score,
+    roc_auc_score,
+    roc_curve,
 )
 from sklearn.preprocessing import label_binarize
-from typing import Dict, Tuple, List
-import joblib
-
+from sklearn.svm import LinearSVC
+from xgboost import XGBClassifier
 
 # =============================================================================
 # MODEL TRAINING FUNCTIONS
