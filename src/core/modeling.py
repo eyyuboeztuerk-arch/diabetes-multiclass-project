@@ -1,434 +1,222 @@
 """
-Modeling Module
-Functions for training, evaluating, and visualizing machine learning models
+modeling.py
+Model training and evaluation functions for multi-class diabetes classification
 
-This module contains all functions needed for model training and evaluation.
-All models are optimized for HIGH RECALL to minimize false negatives in
-diabetes screening (medical context: missing a diabetes case is more serious
-than a false alarm).
+This module contains functions for:
+- Training different machine learning models
+- Evaluating model performance
+- Visualizing results (confusion matrices, classification reports, ROC curves)
+- Comparing multiple models
+- Saving/loading trained models
 """
 
-import joblib
-import matplotlib.pyplot as plt
 import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import LinearSVC
+from sklearn.calibration import CalibratedClassifierCV
+from xgboost import XGBClassifier
 from sklearn.metrics import (
-    ConfusionMatrixDisplay,
-    accuracy_score,
-    auc,
-    classification_report,
-    confusion_matrix,
-    f1_score,
-    precision_score,
-    recall_score,
-    roc_auc_score,
-    roc_curve,
+    classification_report, confusion_matrix,
+    accuracy_score, f1_score, roc_auc_score,
+    precision_score, recall_score,
+    ConfusionMatrixDisplay, roc_curve, auc
 )
 from sklearn.preprocessing import label_binarize
-from sklearn.svm import SVC
-from xgboost import XGBClassifier
+from typing import Dict, Tuple, List
+import joblib
 
 
-def train_logistic_regression(
-    features: pd.DataFrame, target: pd.Series
-) -> LogisticRegression:
+# =============================================================================
+# MODEL TRAINING FUNCTIONS
+# =============================================================================
+
+def train_logistic_regression(features, target, **kwargs):
     """
-    Trains Logistic Regression model (optimized for recall)
-
-    Logistic Regression is a linear model that predicts class probabilities.
-    It's interpretable, fast, and works well as a baseline model.
+    Trains Logistic Regression model for multi-class classification.
 
     Args:
         features: Training features
         target: Training target
+        **kwargs: Additional parameters for LogisticRegression
 
     Returns:
         Trained Logistic Regression model
-
-    Model Configuration (Recall-Optimized):
-        - class_weight='balanced': Gives more weight to minority classes
-          (Prediabetes, Diabetes) to improve their recall
-        - max_iter=1000: Ensures convergence for complex datasets
-        - multi_class='multinomial': Proper multi-class classification
-        - solver='lbfgs': Efficient solver for multi-class problems
-
-    Medical Context:
-        class_weight='balanced' is crucial for medical screening because
-        it helps the model prioritize detecting minority classes (diabetes
-        cases) even at the cost of some false positives.
     """
-    # Initialize Logistic Regression with recall-optimized parameters
     model = LogisticRegression(
-        class_weight="balanced",  # Prioritize minority classes (HIGH RECALL)
-        max_iter=1000,  # Ensure convergence
-        multi_class="multinomial",  # Multi-class classification
-        solver="lbfgs",  # Efficient solver
-        random_state=42,  # Reproducibility
+        multi_class='multinomial',
+        solver='lbfgs',
+        max_iter=1000,
+        random_state=42,
+        **kwargs
     )
-
-    # Train model on training data
     model.fit(features, target)
-
+    print("Logistic Regression trained")
     return model
 
 
-def train_random_forest(
-    features: pd.DataFrame, target: pd.Series
-) -> RandomForestClassifier:
+def train_random_forest(features, target, **kwargs):
     """
-    Trains Random Forest model (optimized for recall)
-
-    Random Forest is an ensemble of decision trees. It's robust to
-    overfitting, handles non-linear relationships well, and provides
-    feature importance scores.
+    Trains Random Forest model for multi-class classification.
 
     Args:
         features: Training features
         target: Training target
+        **kwargs: Additional parameters for RandomForestClassifier
 
     Returns:
         Trained Random Forest model
-
-    Model Configuration (Recall-Optimized):
-        - n_estimators=100: Number of trees (more trees = more stable)
-        - class_weight='balanced': Prioritize minority classes
-        - max_depth=10: Limit tree depth to prevent overfitting
-        - min_samples_split=10: Minimum samples to split a node
-        - min_samples_leaf=5: Minimum samples in leaf node
-
-    Medical Context:
-        Random Forest with balanced class weights excels at detecting
-        minority classes (diabetes cases). The ensemble approach reduces
-        variance and improves recall stability.
     """
-    # Initialize Random Forest with recall-optimized parameters
     model = RandomForestClassifier(
-        n_estimators=100,  # 100 trees in the forest
-        class_weight="balanced",  # Prioritize minority classes (HIGH RECALL)
-        max_depth=10,  # Prevent overfitting
-        min_samples_split=10,  # Minimum samples to split
-        min_samples_leaf=5,  # Minimum samples in leaf
-        random_state=42,  # Reproducibility
+        n_estimators=100,
+        random_state=42,
+        n_jobs=-1,
+        **kwargs
     )
-
-    # Train model on training data
     model.fit(features, target)
-
+    print("Random Forest trained")
     return model
 
 
-def train_xgboost(features: pd.DataFrame, target: pd.Series) -> XGBClassifier:
+def train_xgboost(features, target, **kwargs):
     """
-    Trains XGBoost model (optimized for recall)
-
-    XGBoost is a gradient boosting algorithm that builds trees sequentially,
-    each correcting errors of previous trees. It often achieves the best
-    performance on structured/tabular data.
+    Trains XGBoost model for multi-class classification.
 
     Args:
         features: Training features
         target: Training target
+        **kwargs: Additional parameters for XGBClassifier
 
     Returns:
         Trained XGBoost model
-
-    Model Configuration (Recall-Optimized):
-        - n_estimators=100: Number of boosting rounds
-        - learning_rate=0.1: Step size for each boosting iteration
-        - max_depth=5: Maximum tree depth
-        - scale_pos_weight: Calculated to balance classes
-        - eval_metric='mlogloss': Multi-class log loss
-
-    Medical Context:
-        XGBoost with scale_pos_weight is highly effective for imbalanced
-        medical datasets. It learns to prioritize minority classes
-        (diabetes cases) through weighted loss function, maximizing recall.
     """
-    # Calculate scale_pos_weight for class balancing
-    # This gives more weight to minority classes in the loss function
-    class_counts = target.value_counts()
-    scale_pos_weight = class_counts[0] / class_counts[1] if len(class_counts) > 1 else 1
-
-    # Initialize XGBoost with recall-optimized parameters
     model = XGBClassifier(
-        n_estimators=100,  # 100 boosting rounds
-        learning_rate=0.1,  # Step size
-        max_depth=5,  # Tree depth
-        scale_pos_weight=scale_pos_weight,  # Balance classes (HIGH RECALL)
-        eval_metric="mlogloss",  # Multi-class log loss
-        use_label_encoder=False,  # Disable deprecated encoder
-        random_state=42,  # Reproducibility
+        objective='multi:softmax',
+        num_class=3,
+        random_state=42,
+        n_jobs=-1,
+        **kwargs
     )
-
-    # Train model on training data
     model.fit(features, target)
-
+    print("XGBoost trained")
     return model
 
 
-def train_svm(features: pd.DataFrame, target: pd.Series) -> SVC:
+def train_linear_svm(features, target, **kwargs):
     """
-    Trains Support Vector Machine model (optimized for recall)
+    Trains LinearSVM model (much faster than RBF-SVM for large datasets).
 
-    SVM finds optimal hyperplanes to separate classes. It works well
-    for high-dimensional data and can capture complex non-linear
-    decision boundaries with the RBF kernel.
+    LinearSVC is wrapped with CalibratedClassifierCV to enable
+    probability estimates needed for ROC curves.
 
     Args:
         features: Training features
         target: Training target
+        **kwargs: Additional parameters for LinearSVC
 
     Returns:
-        Trained SVM model
-
-    Model Configuration (Recall-Optimized):
-        - kernel='rbf': Radial Basis Function for non-linear boundaries
-        - class_weight='balanced': Prioritize minority classes
-        - C=1.0: Regularization parameter
-        - probability=True: Enable probability estimates for ROC curves
-
-    Medical Context:
-        SVM with balanced class weights and RBF kernel can capture
-        complex patterns in medical data. The balanced weights ensure
-        high recall for minority classes (diabetes cases).
-
-    Note:
-        SVM can be slow on large datasets. Consider using a subset
-        for initial experiments if training time is excessive.
+        Trained LinearSVM model (calibrated for probability estimates)
     """
-    # Initialize SVM with recall-optimized parameters
-    model = SVC(
-        kernel="rbf",  # Radial Basis Function kernel
-        class_weight="balanced",  # Prioritize minority classes (HIGH RECALL)
-        C=1.0,  # Regularization parameter
-        probability=True,  # Enable probability estimates
-        random_state=42,  # Reproducibility
+    linear_svm = LinearSVC(
+        max_iter=1000,
+        random_state=42,
+        **kwargs
     )
-
-    # Train model on training data
+    model = CalibratedClassifierCV(linear_svm, cv=3)
     model.fit(features, target)
-
+    print("LinearSVM trained")
     return model
 
 
-def evaluate_model(model, X_test, y_test, model_name: str = "Model") -> Dict:
-    """..."""
+# =============================================================================
+# EVALUATION FUNCTIONS
+# =============================================================================
 
-    y_pred = model.predict(X_test)
-    y_pred_proba = model.predict_proba(X_test)
+def evaluate_model(model, features, target, model_name: str = "Model") -> Dict:
+    """
+    Evaluates a trained model and returns metrics dictionary.
+
+    Keys in the returned dictionary match the expected input of compare_models().
+
+    Args:
+        model: Trained model
+        features: Test features
+        target: Test target
+        model_name: Name of the model for display
+
+    Returns:
+        Dictionary with evaluation metrics:
+            - model_name, Accuracy, Precision, Recall,
+              F1 (Macro), F1 (Weighted), ROC-AUC,
+              y_pred, y_pred_proba
+
+    Medical Context:
+        Recall is highlighted as the PRIMARY METRIC because missing
+        a diabetes case (false negative) is more critical than a
+        false alarm (false positive) in medical screening.
+    """
+    predictions = model.predict(features)
+    target_proba = model.predict_proba(features)
 
     # Calculate metrics
-    accuracy = accuracy_score(y_test, y_pred)
-    precision = precision_score(y_test, y_pred, average="weighted", zero_division=0)
-    recall = recall_score(y_test, y_pred, average="weighted", zero_division=0)
-    f1_macro = f1_score(y_test, y_pred, average="macro")
-    f1_weighted = f1_score(y_test, y_pred, average="weighted")
+    accuracy    = accuracy_score(target, predictions)
+    precision   = precision_score(target, predictions, average='weighted', zero_division=0)
+    recall      = recall_score(target, predictions, average='weighted', zero_division=0)
+    f1_macro    = f1_score(target, predictions, average='macro')
+    f1_weighted = f1_score(target, predictions, average='weighted')
 
-    # ROC-AUC (One-vs-Rest)
-    y_test_bin = label_binarize(y_test, classes=[0, 1, 2])
-    roc_auc = roc_auc_score(
-        y_test_bin, y_pred_proba, average="macro", multi_class="ovr"
-    )
-
-    print(f"\n{'=' * 60}")
-    print(f"{model_name} - EVALUATION")
-    print(f"{'=' * 60}")
-    print(f"Accuracy:           {accuracy:.4f}")
-    print(f"Precision:          {precision:.4f}")
-    print(f"Recall:             {recall:.4f}  ← PRIMARY METRIC")
-    print(f"F1-Score (Macro):   {f1_macro:.4f}")
-    print(f"F1-Score (Weighted):{f1_weighted:.4f}")
-    print(f"ROC-AUC (Macro):    {roc_auc:.4f}")
-    print(f"\nClassification Report:\n{classification_report(y_test, y_pred)}")
-    print(f"\nConfusion Matrix:\n{confusion_matrix(y_test, y_pred)}")
-    print(f"{'=' * 60}\n")
-
-    # Keys match compare_models() expectations
-    return {
-        "model_name": model_name,
-        "Accuracy": accuracy,
-        "Precision": precision,
-        "Recall": recall,
-        "F1 (Macro)": f1_macro,
-        "F1 (Weighted)": f1_weighted,
-        "ROC-AUC": roc_auc,
-        "y_pred": y_pred,
-        "y_pred_proba": y_pred_proba,
-    }
-
-
-def plot_confusion_matrix(
-    model, features: pd.DataFrame, target: pd.Series, model_name: str, ax=None
-):
-    """
-    Plots confusion matrix for a trained model
-
-    Args:
-        model: Trained model
-        features: Test features
-        target: Test target
-        model_name: Name of the model for the title
-        ax: Matplotlib axis object (optional)
-    """
-    # Make predictions
-    predictions = model.predict(features)
-
-    # Calculate confusion matrix
-    cm = confusion_matrix(target, predictions)
-
-    # Create display
-    if ax is None:
-        fig, ax = plt.subplots(figsize=(8, 6))
-
-    disp = ConfusionMatrixDisplay(
-        confusion_matrix=cm, display_labels=["No Diabetes", "Prediabetes", "Diabetes"]
-    )
-
-    disp.plot(ax=ax, cmap="Blues", values_format="d")
-    ax.set_title(f"Confusion Matrix - {model_name}", fontsize=14, fontweight="bold")
-    ax.set_xlabel("Predicted Label", fontsize=12)
-    ax.set_ylabel("True Label", fontsize=12)
-
-    return ax
-
-
-def plot_classification_report(
-    model, features: pd.DataFrame, target: pd.Series, model_name: str, ax=None
-):
-    """
-    Plots classification report as a heatmap
-
-    Args:
-        model: Trained model
-        features: Test features
-        target: Test target
-        model_name: Name of the model for the title
-        ax: Matplotlib axis object (optional)
-    """
-    # Make predictions
-    predictions = model.predict(features)
-
-    # Generate classification report as dictionary
-    report = classification_report(
-        target,
-        predictions,
-        target_names=["No Diabetes", "Prediabetes", "Diabetes"],
-        output_dict=True,
-    )
-
-    # Extract metrics for each class
-    classes = ["No Diabetes", "Prediabetes", "Diabetes"]
-    metrics = ["precision", "recall", "f1-score"]
-
-    # Create matrix for heatmap
-    data = []
-    for cls in classes:
-        data.append([report[cls][metric] for metric in metrics])  # pyright: ignore[reportArgumentType]
-
-    # Create DataFrame
-    df_report = pd.DataFrame(
-        data, index=classes, columns=["Precision", "Recall", "F1-Score"]
-    )
-
-    # Create heatmap
-    if ax is None:
-        fig, ax = plt.subplots(figsize=(8, 6))
-
-    sns.heatmap(
-        df_report,
-        annot=True,
-        fmt=".3f",
-        # cmap="RdYlGn",
-        vmin=0,
-        vmax=1,
-        cbar_kws={"label": "Score"},
-        ax=ax,
-    )
-
-    ax.set_title(
-        f"Classification Report - {model_name}", fontsize=14, fontweight="bold"
-    )
-    ax.set_xlabel("Metrics", fontsize=12)
-    ax.set_ylabel("Classes", fontsize=12)
-
-    return ax
-
-
-def plot_roc_curves(
-    model, features: pd.DataFrame, target: pd.Series, model_name: str, ax=None
-):
-    """
-    Plots ROC curves for multi-class classification
-
-    Args:
-        model: Trained model
-        features: Test features
-        target: Test target
-        model_name: Name of the model for the title
-        ax: Matplotlib axis object (optional)
-    """
-    # Get probability predictions
-    if hasattr(model, "predict_proba"):
-        target_proba = model.predict_proba(features)
-    else:
-        # For models without predict_proba (shouldn't happen with our models)
-        target_proba = model.decision_function(features)
-
-    # Binarize the target for multi-class ROC
+    # ROC-AUC (One-vs-Rest, macro average)
     target_bin = label_binarize(target, classes=[0, 1, 2])
-    n_classes = target_bin.shape[1]
+    roc_auc = roc_auc_score(target_bin, target_proba, average='macro', multi_class='ovr')
 
-    # Create plot
-    if ax is None:
-        fig, ax = plt.subplots(figsize=(8, 6))
+    # Print evaluation summary
+    print(f"\n{'='*60}")
+    print(f"{model_name} - EVALUATION")
+    print(f"{'='*60}")
+    print(f"  Accuracy:            {accuracy:.4f}")
+    print(f"  Precision:           {precision:.4f}")
+    print(f"  Recall:              {recall:.4f}  ← PRIMARY METRIC")
+    print(f"  F1-Score (Macro):    {f1_macro:.4f}")
+    print(f"  F1-Score (Weighted): {f1_weighted:.4f}")
+    print(f"  ROC-AUC (Macro):     {roc_auc:.4f}")
+    print(f"\nClassification Report:\n{classification_report(target, predictions)}")
+    print(f"\nConfusion Matrix:\n{confusion_matrix(target, predictions)}")
+    print(f"{'='*60}\n")
 
-    # Plot ROC curve for each class
-    colors = ["blue", "orange", "green"]
-    class_names = ["No Diabetes", "Prediabetes", "Diabetes"]
-
-    for i, color, class_name in zip(range(n_classes), colors, class_names):
-        fpr, tpr, _ = roc_curve(target_bin[:, i], target_proba[:, i])  # pyright: ignore[reportIndexIssue]
-        roc_auc = auc(fpr, tpr)
-
-        ax.plot(
-            fpr, tpr, color=color, lw=2, label=f"{class_name} (AUC = {roc_auc:.3f})"
-        )
-
-    # Plot diagonal line (random classifier)
-    ax.plot([0, 1], [0, 1], "k--", lw=2, label="Random Classifier")
-
-    ax.set_xlim([0.0, 1.0])  # pyright: ignore[reportArgumentType]
-    ax.set_ylim([0.0, 1.05])  # pyright: ignore[reportArgumentType]
-    ax.set_xlabel("False Positive Rate", fontsize=12)
-    ax.set_ylabel("True Positive Rate (Recall)", fontsize=12)
-    ax.set_title(f"ROC Curves - {model_name}", fontsize=14, fontweight="bold")
-    ax.legend(loc="lower right", fontsize=10)
-    ax.grid(alpha=0.3)
-
-    return ax
+    return {
+        'model_name':   model_name,
+        'Accuracy':     accuracy,
+        'Precision':    precision,
+        'Recall':       recall,
+        'F1 (Macro)':   f1_macro,
+        'F1 (Weighted)': f1_weighted,
+        'ROC-AUC':      roc_auc,
+        'y_pred':       predictions,
+        'y_pred_proba': target_proba
+    }
 
 
 def compare_models(results: dict) -> pd.DataFrame:
     """
-    Compares multiple models and returns comparison DataFrame
+    Compares multiple models and returns comparison DataFrame.
 
     This function aggregates evaluation metrics from multiple models
     into a single DataFrame for easy comparison. Models are sorted
-    by recall (our primary optimization metric).
+    by Recall (our primary optimization metric).
 
     Args:
         results: Dictionary of {model_name: metrics_dict}
 
     Returns:
-        DataFrame with model comparison (sorted by recall)
+        DataFrame with model comparison (sorted by Recall descending)
 
     Medical Context:
         Models are ranked by RECALL because in medical screening,
         minimizing false negatives (missed diabetes cases) is the
-        top priority. A model with highest recall is preferred even
-        if it has slightly lower precision or accuracy.
+        top priority.
     """
     # Convert results dictionary to DataFrame
     comparison = pd.DataFrame(results).T
@@ -439,85 +227,180 @@ def compare_models(results: dict) -> pd.DataFrame:
     return comparison
 
 
-def save_model(model, filepath: str):
-    """
-    Saves trained model to disk using joblib
+# =============================================================================
+# VISUALIZATION FUNCTIONS
+# =============================================================================
 
-    This function serializes the trained model to disk for later use.
-    Saved models can be loaded for:
-    - Production deployment
-    - Making predictions on new data
-    - Sharing with collaborators
-    - Reproducibility
+def plot_confusion_matrix(model, features, target,
+                          model_name: str, ax=None):
+    """
+    Plots confusion matrix for a trained model.
 
     Args:
-        model: Trained model to save
-        filepath: Path to save model (should end with .pkl)
+        model: Trained model
+        features: Test features
+        target: Test target
+        model_name: Name of the model for the title
+        ax: Matplotlib axis object (optional)
 
-    Example:
-        >>> save_model(best_model, '../outputs/models/xgboost_smote_recall_optimized.pkl')
-
-    Note:
-        joblib is preferred over pickle for scikit-learn models because
-        it's more efficient for large numpy arrays (common in ML models).
+    Returns:
+        Matplotlib axis object
     """
-    # Save model using joblib
-    joblib.dump(model, filepath)
+    predictions = model.predict(features)
+    cm = confusion_matrix(target, predictions)
 
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(8, 6))
+
+    disp = ConfusionMatrixDisplay(
+        confusion_matrix=cm,
+        display_labels=['No Diabetes', 'Prediabetes', 'Diabetes']
+    )
+    disp.plot(ax=ax, cmap='Blues', values_format='d')
+    ax.set_title(f'Confusion Matrix - {model_name}', fontsize=13, fontweight='bold')
+    ax.set_xlabel('Predicted Label', fontsize=11)
+    ax.set_ylabel('True Label', fontsize=11)
+
+    return ax
+
+
+def plot_classification_report(model, features, target,
+                                model_name: str, ax=None):
+    """
+    Plots classification report as a heatmap.
+
+    Args:
+        model: Trained model
+        features: Test features
+        target: Test target
+        model_name: Name of the model for the title
+        ax: Matplotlib axis object (optional)
+
+    Returns:
+        Matplotlib axis object
+    """
+    predictions = model.predict(features)
+    report = classification_report(
+        target, predictions,
+        target_names=['No Diabetes', 'Prediabetes', 'Diabetes'],
+        output_dict=True
+    )
+
+    classes = ['No Diabetes', 'Prediabetes', 'Diabetes']
+    df_report = pd.DataFrame(
+        [[report[c]['precision'], report[c]['recall'], report[c]['f1-score']] for c in classes],
+        index=classes,
+        columns=['Precision', 'Recall', 'F1-Score']
+    )
+
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(8, 6))
+
+    sns.heatmap(
+        df_report, annot=True, fmt='.3f',
+        cmap='RdYlGn', vmin=0, vmax=1,
+        cbar_kws={'label': 'Score'}, ax=ax
+    )
+    ax.set_title(f'Classification Report - {model_name}', fontsize=13, fontweight='bold')
+    ax.set_xlabel('Metrics', fontsize=11)
+    ax.set_ylabel('Classes', fontsize=11)
+
+    return ax
+
+
+def plot_roc_curves(model, features, target,
+                    model_name: str, ax=None):
+    """
+    Plots ROC curves for multi-class classification (One-vs-Rest).
+
+    Args:
+        model: Trained model
+        features: Test features
+        target: Test target
+        model_name: Name of the model for the title
+        ax: Matplotlib axis object (optional)
+
+    Returns:
+        Matplotlib axis object
+    """
+    target_proba = model.predict_proba(features)
+    target_bin   = label_binarize(target, classes=[0, 1, 2])
+
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(8, 6))
+
+    colors      = ['blue', 'orange', 'green']
+    class_names = ['No Diabetes', 'Prediabetes', 'Diabetes']
+
+    for i, (color, class_name) in enumerate(zip(colors, class_names)):
+        fpr, tpr, _ = roc_curve(target_bin[:, i], target_proba[:, i])
+        roc_auc_val = auc(fpr, tpr)
+        ax.plot(fpr, tpr, color=color, lw=2,
+                label=f'{class_name} (AUC = {roc_auc_val:.3f})')
+
+    ax.plot([0, 1], [0, 1], 'k--', lw=1.5, label='Random Classifier')
+    ax.set_xlim([0.0, 1.0])
+    ax.set_ylim([0.0, 1.05])
+    ax.set_xlabel('False Positive Rate', fontsize=11)
+    ax.set_ylabel('True Positive Rate (Recall)', fontsize=11)
+    ax.set_title(f'ROC Curves - {model_name}', fontsize=13, fontweight='bold')
+    ax.legend(loc='lower right', fontsize=9)
+    ax.grid(alpha=0.3)
+
+    return ax
+
+
+# =============================================================================
+# MODEL PERSISTENCE FUNCTIONS
+# =============================================================================
+
+def save_model(model, filepath: str) -> None:
+    """
+    Saves a trained model to disk.
+
+    Args:
+        model: Trained model
+        filepath: Target file path (e.g. '../models/rf_model.pkl')
+    """
+    joblib.dump(model, filepath)
     print(f"Model saved: {filepath}")
 
 
 def load_model(filepath: str):
     """
-    Loads trained model from disk
-
-    This function deserializes a saved model from disk for use.
+    Loads a saved model from disk.
 
     Args:
-        filepath: Path to saved model (.pkl file)
+        filepath: Path to the saved model file
 
     Returns:
         Loaded model
-
-    Example:
-        >>> model = load_model('../outputs/models/xgboost_smote_recall_optimized.pkl')
-        >>> predictions = model.predict(new_data)
     """
-    # Load model using joblib
     model = joblib.load(filepath)
-
     print(f"Model loaded: {filepath}")
-
     return model
 
 
-def train_linear_svm(features: pd.DataFrame, target: pd.Series):
+def get_feature_importance(model, feature_names, top_n: int = 20) -> pd.DataFrame:
     """
-    Trains LinearSVM model (optimized for recall, much faster than RBF-SVM)
-
-    LinearSVC is used instead of SVC with RBF kernel for computational efficiency.
-    It's 10-100x faster and suitable for large datasets.
+    Extracts feature importance from tree-based models.
 
     Args:
-        features: Training features
-        target: Training target
+        model: Trained model (Random Forest or XGBoost)
+        feature_names: List of feature names
+        top_n: Number of top features to return
 
     Returns:
-        Trained LinearSVM model (calibrated for probability estimates)
+        DataFrame with feature importances (sorted descending),
+        or None if model does not support feature_importances_
     """
-    from sklearn.calibration import CalibratedClassifierCV
-    from sklearn.svm import LinearSVC
+    if hasattr(model, 'feature_importances_'):
+        importance_df = pd.DataFrame({
+            'Feature':    feature_names,
+            'Importance': model.feature_importances_
+        }).sort_values('Importance', ascending=False).head(top_n)
 
-    # Train LinearSVC (much faster than SVC with RBF)
-    linear_svm = LinearSVC(
-        class_weight="balanced",  # Prioritize minority classes
-        max_iter=1000,  # Maximum iterations for convergence
-        random_state=42,  # For reproducibility
-    )
-
-    # Wrap with CalibratedClassifierCV to get probability estimates
-    # This is needed for ROC curves and probability-based predictions
-    model = CalibratedClassifierCV(linear_svm, cv=3)
-    model.fit(features, target)
-
-    return model
+        return importance_df
+    else:
+        print("Model does not have feature_importances_")
+        return None
