@@ -23,6 +23,7 @@ from sklearn.metrics import (
     f1_score,
     precision_score,
     recall_score,
+    roc_auc_score,
     roc_curve,
 )
 from sklearn.preprocessing import label_binarize
@@ -212,53 +213,50 @@ def train_svm(features: pd.DataFrame, target: pd.Series) -> SVC:
     return model
 
 
-def evaluate_model(model, features: pd.DataFrame, target: pd.Series) -> dict:
-    """
-    Evaluates model performance on test data
+def evaluate_model(model, X_test, y_test, model_name: str = "Model") -> Dict:
+    """..."""
 
-    This function calculates key classification metrics to assess
-    model performance. For medical screening, recall is the most
-    important metric (minimize false negatives).
+    y_pred = model.predict(X_test)
+    y_pred_proba = model.predict_proba(X_test)
 
-    Args:
-        model: Trained model
-        features: Test features
-        target: Test target (true labels)
+    # Calculate metrics
+    accuracy = accuracy_score(y_test, y_pred)
+    precision = precision_score(y_test, y_pred, average="weighted", zero_division=0)
+    recall = recall_score(y_test, y_pred, average="weighted", zero_division=0)
+    f1_macro = f1_score(y_test, y_pred, average="macro")
+    f1_weighted = f1_score(y_test, y_pred, average="weighted")
 
-    Returns:
-        Dictionary with evaluation metrics
+    # ROC-AUC (One-vs-Rest)
+    y_test_bin = label_binarize(y_test, classes=[0, 1, 2])
+    roc_auc = roc_auc_score(
+        y_test_bin, y_pred_proba, average="macro", multi_class="ovr"
+    )
 
-    Metrics calculated:
-        - Accuracy: Overall correctness (TP+TN)/(TP+TN+FP+FN)
-        - Precision: Positive predictive value TP/(TP+FP)
-        - Recall: Sensitivity, true positive rate TP/(TP+FN)
-        - F1-Score: Harmonic mean of precision and recall
+    print(f"\n{'=' * 60}")
+    print(f"{model_name} - EVALUATION")
+    print(f"{'=' * 60}")
+    print(f"Accuracy:           {accuracy:.4f}")
+    print(f"Precision:          {precision:.4f}")
+    print(f"Recall:             {recall:.4f}  ← PRIMARY METRIC")
+    print(f"F1-Score (Macro):   {f1_macro:.4f}")
+    print(f"F1-Score (Weighted):{f1_weighted:.4f}")
+    print(f"ROC-AUC (Macro):    {roc_auc:.4f}")
+    print(f"\nClassification Report:\n{classification_report(y_test, y_pred)}")
+    print(f"\nConfusion Matrix:\n{confusion_matrix(y_test, y_pred)}")
+    print(f"{'=' * 60}\n")
 
-    Medical Context:
-        - Recall (Sensitivity): Most critical for screening
-          High recall = Few missed diabetes cases (low false negatives)
-        - Precision: Positive predictive value
-          Lower precision acceptable (false alarms can be verified)
-        - F1-Score: Balance between precision and recall
-        - Accuracy: Can be misleading with imbalanced classes
-    """
-    # Make predictions on test data
-    predictions = model.predict(features)
-
-    # Calculate evaluation metrics
-    # average='weighted': Accounts for class imbalance
-    metrics = {
-        "Accuracy": accuracy_score(target, predictions),
-        "Precision": precision_score(
-            target, predictions, average="weighted", zero_division=0
-        ),
-        "Recall": recall_score(
-            target, predictions, average="weighted", zero_division=0
-        ),  # MOST IMPORTANT
-        "F1-Score": f1_score(target, predictions, average="weighted", zero_division=0),
+    # Keys match compare_models() expectations
+    return {
+        "model_name": model_name,
+        "Accuracy": accuracy,
+        "Precision": precision,
+        "Recall": recall,
+        "F1 (Macro)": f1_macro,
+        "F1 (Weighted)": f1_weighted,
+        "ROC-AUC": roc_auc,
+        "y_pred": y_pred,
+        "y_pred_proba": y_pred_proba,
     }
-
-    return metrics
 
 
 def plot_confusion_matrix(
