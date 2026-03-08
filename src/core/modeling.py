@@ -39,6 +39,7 @@ from xgboost import XGBClassifier
 # MODEL TRAINING FUNCTIONS
 # =============================================================================
 
+
 def train_logistic_regression(features, target, **kwargs):
     """
     Trains Logistic Regression model for multi-class classification.
@@ -52,11 +53,11 @@ def train_logistic_regression(features, target, **kwargs):
         Trained Logistic Regression model
     """
     model = LogisticRegression(
-        multi_class='multinomial',
-        solver='lbfgs',
+        multi_class="multinomial",
+        solver="lbfgs",
         max_iter=1000,
         random_state=42,
-        **kwargs
+        **kwargs,
     )
     model.fit(features, target)
     print("Logistic Regression trained")
@@ -76,10 +77,7 @@ def train_random_forest(features, target, **kwargs):
         Trained Random Forest model
     """
     model = RandomForestClassifier(
-        n_estimators=100,
-        random_state=42,
-        n_jobs=-1,
-        **kwargs
+        n_estimators=100, random_state=42, n_jobs=-1, **kwargs
     )
     model.fit(features, target)
     print("Random Forest trained")
@@ -99,11 +97,7 @@ def train_xgboost(features, target, **kwargs):
         Trained XGBoost model
     """
     model = XGBClassifier(
-        objective='multi:softmax',
-        num_class=3,
-        random_state=42,
-        n_jobs=-1,
-        **kwargs
+        objective="multi:softmax", num_class=3, random_state=42, n_jobs=-1, **kwargs
     )
     model.fit(features, target)
     print("XGBoost trained")
@@ -125,11 +119,7 @@ def train_linear_svm(features, target, **kwargs):
     Returns:
         Trained LinearSVM model (calibrated for probability estimates)
     """
-    linear_svm = LinearSVC(
-        max_iter=1000,
-        random_state=42,
-        **kwargs
-    )
+    linear_svm = LinearSVC(max_iter=1000, random_state=42, **kwargs)
     model = CalibratedClassifierCV(linear_svm, cv=3)
     model.fit(features, target)
     print("LinearSVM trained")
@@ -139,6 +129,7 @@ def train_linear_svm(features, target, **kwargs):
 # =============================================================================
 # EVALUATION FUNCTIONS
 # =============================================================================
+
 
 def evaluate_model(model, features, target, model_name: str = "Model") -> Dict:
     """
@@ -167,20 +158,24 @@ def evaluate_model(model, features, target, model_name: str = "Model") -> Dict:
     target_proba = model.predict_proba(features)
 
     # Calculate metrics
-    accuracy    = accuracy_score(target, predictions)
-    precision   = precision_score(target, predictions, average='weighted', zero_division=0)
-    recall      = recall_score(target, predictions, average='weighted', zero_division=0)
-    f1_macro    = f1_score(target, predictions, average='macro')
-    f1_weighted = f1_score(target, predictions, average='weighted')
+    accuracy = accuracy_score(target, predictions)
+    precision = precision_score(
+        target, predictions, average="weighted", zero_division=0
+    )
+    recall = recall_score(target, predictions, average="weighted", zero_division=0)
+    f1_macro = f1_score(target, predictions, average="macro")
+    f1_weighted = f1_score(target, predictions, average="weighted")
 
     # ROC-AUC (One-vs-Rest, macro average)
     target_bin = label_binarize(target, classes=[0, 1, 2])
-    roc_auc = roc_auc_score(target_bin, target_proba, average='macro', multi_class='ovr')
+    roc_auc = roc_auc_score(
+        target_bin, target_proba, average="macro", multi_class="ovr"
+    )
 
     # Print evaluation summary
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"{model_name} - EVALUATION")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     print(f"  Accuracy:            {accuracy:.4f}")
     print(f"  Precision:           {precision:.4f}")
     print(f"  Recall:              {recall:.4f}  ← PRIMARY METRIC")
@@ -189,18 +184,18 @@ def evaluate_model(model, features, target, model_name: str = "Model") -> Dict:
     print(f"  ROC-AUC (Macro):     {roc_auc:.4f}")
     print(f"\nClassification Report:\n{classification_report(target, predictions)}")
     print(f"\nConfusion Matrix:\n{confusion_matrix(target, predictions)}")
-    print(f"{'='*60}\n")
+    print(f"{'=' * 60}\n")
 
     return {
-        'model_name':   model_name,
-        'Accuracy':     accuracy,
-        'Precision':    precision,
-        'Recall':       recall,
-        'F1 (Macro)':   f1_macro,
-        'F1 (Weighted)': f1_weighted,
-        'ROC-AUC':      roc_auc,
-        'y_pred':       predictions,
-        'y_pred_proba': target_proba
+        "model_name": model_name,
+        "Accuracy": accuracy,
+        "Precision": precision,
+        "Recall": recall,
+        "F1 (Macro)": f1_macro,
+        "F1 (Weighted)": f1_weighted,
+        "ROC-AUC": roc_auc,
+        "y_pred": predictions,
+        "y_pred_proba": target_proba,
     }
 
 
@@ -236,8 +231,8 @@ def compare_models(results: dict) -> pd.DataFrame:
 # VISUALIZATION FUNCTIONS
 # =============================================================================
 
-def plot_confusion_matrix(model, features, target,
-                          model_name: str, ax=None):
+
+def plot_confusion_matrix(model, features, target, model_name: str, ax=None):
     """
     Plots confusion matrix for a trained model.
 
@@ -258,19 +253,17 @@ def plot_confusion_matrix(model, features, target,
         fig, ax = plt.subplots(figsize=(8, 6))
 
     disp = ConfusionMatrixDisplay(
-        confusion_matrix=cm,
-        display_labels=['No Diabetes', 'Prediabetes', 'Diabetes']
+        confusion_matrix=cm, display_labels=["No Diabetes", "Prediabetes", "Diabetes"]
     )
-    disp.plot(ax=ax, cmap='Blues', values_format='d')
-    ax.set_title(f'Confusion Matrix - {model_name}', fontsize=13, fontweight='bold')
-    ax.set_xlabel('Predicted Label', fontsize=11)
-    ax.set_ylabel('True Label', fontsize=11)
+    disp.plot(ax=ax, cmap="Blues", values_format="d")
+    ax.set_title(f"Confusion Matrix - {model_name}", fontsize=13, fontweight="bold")
+    ax.set_xlabel("Predicted Label", fontsize=11)
+    ax.set_ylabel("True Label", fontsize=11)
 
     return ax
 
 
-def plot_classification_report(model, features, target,
-                                model_name: str, ax=None):
+def plot_classification_report(model, features, target, model_name: str, ax=None):
     """
     Plots classification report as a heatmap.
 
@@ -286,35 +279,45 @@ def plot_classification_report(model, features, target,
     """
     predictions = model.predict(features)
     report = classification_report(
-        target, predictions,
-        target_names=['No Diabetes', 'Prediabetes', 'Diabetes'],
-        output_dict=True
+        target,
+        predictions,
+        target_names=["No Diabetes", "Prediabetes", "Diabetes"],
+        output_dict=True,
     )
 
-    classes = ['No Diabetes', 'Prediabetes', 'Diabetes']
+    classes = ["No Diabetes", "Prediabetes", "Diabetes"]
     df_report = pd.DataFrame(
-        [[report[c]['precision'], report[c]['recall'], report[c]['f1-score']] for c in classes],
+        [
+            [report[c]["precision"], report[c]["recall"], report[c]["f1-score"]] # pyright: ignore[reportArgumentType]
+            for c in classes
+        ],  # pyright: ignore[reportArgumentType]
         index=classes,
-        columns=['Precision', 'Recall', 'F1-Score']
+        columns=["Precision", "Recall", "F1-Score"],
     )
 
     if ax is None:
         fig, ax = plt.subplots(figsize=(8, 6))
 
     sns.heatmap(
-        df_report, annot=True, fmt='.3f',
-        cmap='RdYlGn', vmin=0, vmax=1,
-        cbar_kws={'label': 'Score'}, ax=ax
+        df_report,
+        annot=True,
+        fmt=".3f",
+        cmap="coolwarm",
+        vmin=0,
+        vmax=1,
+        cbar_kws={"label": "Score"},
+        ax=ax,
     )
-    ax.set_title(f'Classification Report - {model_name}', fontsize=13, fontweight='bold')
-    ax.set_xlabel('Metrics', fontsize=11)
-    ax.set_ylabel('Classes', fontsize=11)
+    ax.set_title(
+        f"Classification Report - {model_name}", fontsize=13, fontweight="bold"
+    )
+    ax.set_xlabel("Metrics", fontsize=11)
+    ax.set_ylabel("Classes", fontsize=11)
 
     return ax
 
 
-def plot_roc_curves(model, features, target,
-                    model_name: str, ax=None):
+def plot_roc_curves(model, features, target, model_name: str, ax=None):
     """
     Plots ROC curves for multi-class classification (One-vs-Rest).
 
@@ -329,27 +332,28 @@ def plot_roc_curves(model, features, target,
         Matplotlib axis object
     """
     target_proba = model.predict_proba(features)
-    target_bin   = label_binarize(target, classes=[0, 1, 2])
+    target_bin = label_binarize(target, classes=[0, 1, 2])
 
     if ax is None:
         fig, ax = plt.subplots(figsize=(8, 6))
 
-    colors      = ['blue', 'orange', 'green']
-    class_names = ['No Diabetes', 'Prediabetes', 'Diabetes']
+    colors = ["blue", "orange", "green"]
+    class_names = ["No Diabetes", "Prediabetes", "Diabetes"]
 
     for i, (color, class_name) in enumerate(zip(colors, class_names)):
-        fpr, tpr, _ = roc_curve(target_bin[:, i], target_proba[:, i])
+        fpr, tpr, _ = roc_curve(target_bin[:, i], target_proba[:, i])  # pyright: ignore[reportIndexIssue]
         roc_auc_val = auc(fpr, tpr)
-        ax.plot(fpr, tpr, color=color, lw=2,
-                label=f'{class_name} (AUC = {roc_auc_val:.3f})')
+        ax.plot(
+            fpr, tpr, color=color, lw=2, label=f"{class_name} (AUC = {roc_auc_val:.3f})"
+        )
 
-    ax.plot([0, 1], [0, 1], 'k--', lw=1.5, label='Random Classifier')
-    ax.set_xlim([0.0, 1.0])
-    ax.set_ylim([0.0, 1.05])
-    ax.set_xlabel('False Positive Rate', fontsize=11)
-    ax.set_ylabel('True Positive Rate (Recall)', fontsize=11)
-    ax.set_title(f'ROC Curves - {model_name}', fontsize=13, fontweight='bold')
-    ax.legend(loc='lower right', fontsize=9)
+    ax.plot([0, 1], [0, 1], "k--", lw=1.5, label="Random Classifier")
+    ax.set_xlim([0.0, 1.0])  # pyright: ignore[reportArgumentType]
+    ax.set_ylim([0.0, 1.05])  # pyright: ignore[reportArgumentType]
+    ax.set_xlabel("False Positive Rate", fontsize=11)
+    ax.set_ylabel("True Positive Rate (Recall)", fontsize=11)
+    ax.set_title(f"ROC Curves - {model_name}", fontsize=13, fontweight="bold")
+    ax.legend(loc="lower right", fontsize=9)
     ax.grid(alpha=0.3)
 
     return ax
@@ -358,6 +362,7 @@ def plot_roc_curves(model, features, target,
 # =============================================================================
 # MODEL PERSISTENCE FUNCTIONS
 # =============================================================================
+
 
 def save_model(model, filepath: str) -> None:
     """
@@ -399,13 +404,16 @@ def get_feature_importance(model, feature_names, top_n: int = 20) -> pd.DataFram
         DataFrame with feature importances (sorted descending),
         or None if model does not support feature_importances_
     """
-    if hasattr(model, 'feature_importances_'):
-        importance_df = pd.DataFrame({
-            'Feature':    feature_names,
-            'Importance': model.feature_importances_
-        }).sort_values('Importance', ascending=False).head(top_n)
+    if hasattr(model, "feature_importances_"):
+        importance_df = (
+            pd.DataFrame(
+                {"Feature": feature_names, "Importance": model.feature_importances_}
+            )
+            .sort_values("Importance", ascending=False)
+            .head(top_n)
+        )
 
         return importance_df
     else:
         print("Model does not have feature_importances_")
-        return None
+        return None # pyright: ignore[reportReturnType]
