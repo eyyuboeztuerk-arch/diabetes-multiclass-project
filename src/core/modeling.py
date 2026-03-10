@@ -181,7 +181,7 @@ def evaluate_model(model, features, target, model_name: str = "Model") -> Dict:
     print(f"  Accuracy:            {accuracy:.4f}")
     print(f"  Precision:           {precision:.4f}")
     print(f"  Recall (Macro):      {recall:.4f}")
-    print(f"  Recall (Diabetes):   {report_dict[2]['recall']:.4f} <- PRIMARY METRIC") # pyright: ignore[reportArgumentType]
+    print(f"  Recall (Diabetes):   {report_dict[2]['recall']:.4f} <- PRIMARY METRIC")  # pyright: ignore[reportArgumentType]
     print(f"  F1-Score (Macro):    {f1_macro:.4f}")
     print(f"  F1-Score (Weighted): {f1_weighted:.4f}")
     print(f"  ROC-AUC (Macro):     {roc_auc:.4f}")
@@ -194,7 +194,7 @@ def evaluate_model(model, features, target, model_name: str = "Model") -> Dict:
         "Accuracy": accuracy,
         "Precision": precision,
         "Recall": recall,
-        "Recall_Diabetes": report_dict[2]["recall"], # type: ignore
+        "Recall_Diabetes": report_dict[2]["recall"],  # type: ignore
         "F1 (Macro)": f1_macro,
         "F1 (Weighted)": f1_weighted,
         "ROC-AUC": roc_auc,
