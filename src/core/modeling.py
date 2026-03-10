@@ -186,16 +186,20 @@ def evaluate_model(model, features, target, model_name: str = "Model") -> Dict:
     print(f"\nConfusion Matrix:\n{confusion_matrix(target, predictions)}")
     print(f"{'=' * 60}\n")
 
+    report_dict = classification_report(target, predictions, output_dict=True)
+
     return {
         "model_name": model_name,
         "Accuracy": accuracy,
         "Precision": precision,
         "Recall": recall,
+        "Recall_Diabetes": report_dict["2"]["recall"],  # pyright: ignore[reportArgumentType]
         "F1 (Macro)": f1_macro,
         "F1 (Weighted)": f1_weighted,
         "ROC-AUC": roc_auc,
         "y_pred": predictions,
         "y_pred_proba": target_proba,
+        "Report": report_dict,
     }
 
 
@@ -288,7 +292,7 @@ def plot_classification_report(model, features, target, model_name: str, ax=None
     classes = ["No Diabetes", "Prediabetes", "Diabetes"]
     df_report = pd.DataFrame(
         [
-            [report[c]["precision"], report[c]["recall"], report[c]["f1-score"]] # pyright: ignore[reportArgumentType]
+            [report[c]["precision"], report[c]["recall"], report[c]["f1-score"]]  # pyright: ignore[reportArgumentType]
             for c in classes
         ],  # pyright: ignore[reportArgumentType]
         index=classes,
@@ -416,4 +420,4 @@ def get_feature_importance(model, feature_names, top_n: int = 20) -> pd.DataFram
         return importance_df
     else:
         print("Model does not have feature_importances_")
-        return None # pyright: ignore[reportReturnType]
+        return None  # pyright: ignore[reportReturnType]
