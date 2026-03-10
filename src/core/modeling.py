@@ -178,7 +178,8 @@ def evaluate_model(model, features, target, model_name: str = "Model") -> Dict:
     print(f"{'=' * 60}")
     print(f"  Accuracy:            {accuracy:.4f}")
     print(f"  Precision:           {precision:.4f}")
-    print(f"  Recall:              {recall:.4f}  ← PRIMARY METRIC")
+    print(f"  Recall (Macro):      {recall:.4f}")
+    print(f"  Recall (Diabetes):   {report_dict['2']['recall']:.4f} <- PRIMARY METRIC")  # pyright: ignore[reportUnboundVariable]  # noqa: F821
     print(f"  F1-Score (Macro):    {f1_macro:.4f}")
     print(f"  F1-Score (Weighted): {f1_weighted:.4f}")
     print(f"  ROC-AUC (Macro):     {roc_auc:.4f}")
