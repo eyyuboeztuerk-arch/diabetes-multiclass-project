@@ -172,6 +172,8 @@ def evaluate_model(model, features, target, model_name: str = "Model") -> Dict:
         target_bin, target_proba, average="macro", multi_class="ovr"
     )
 
+    report_dict = classification_report(target, predictions, output_dict=True)
+
     # Print evaluation summary
     print(f"\n{'=' * 60}")
     print(f"{model_name} - EVALUATION")
@@ -179,15 +181,13 @@ def evaluate_model(model, features, target, model_name: str = "Model") -> Dict:
     print(f"  Accuracy:            {accuracy:.4f}")
     print(f"  Precision:           {precision:.4f}")
     print(f"  Recall (Macro):      {recall:.4f}")
-    print(f"  Recall (Diabetes):   {report_dict['2']['recall']:.4f} <- PRIMARY METRIC")  # pyright: ignore[reportUnboundVariable]  # noqa: F821
+    print(f"  Recall (Diabetes):   {report_dict['2']['recall']:.4f} <- PRIMARY METRIC")  # pyright: ignore[reportArgumentType]
     print(f"  F1-Score (Macro):    {f1_macro:.4f}")
     print(f"  F1-Score (Weighted): {f1_weighted:.4f}")
     print(f"  ROC-AUC (Macro):     {roc_auc:.4f}")
     print(f"\nClassification Report:\n{classification_report(target, predictions)}")
     print(f"\nConfusion Matrix:\n{confusion_matrix(target, predictions)}")
     print(f"{'=' * 60}\n")
-
-    report_dict = classification_report(target, predictions, output_dict=True)
 
     return {
         "model_name": model_name,
