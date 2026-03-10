@@ -218,9 +218,9 @@ def compare_models(results: dict) -> pd.DataFrame:
         DataFrame with model comparison (sorted by Recall descending)
 
     Medical Context:
-        Models are ranked by RECALL because in medical screening,
-        minimizing false negatives (missed diabetes cases) is the
-        top priority.
+        Models are ranked by RECALL_DIABETES (Class 2) because in medical
+        screening, missing an actual diabetes case is the most critical error.
+        Macro Recall serves as the secondary metric.
     """
     # Convert results dictionary to DataFrame
     comparison = pd.DataFrame(results).T
