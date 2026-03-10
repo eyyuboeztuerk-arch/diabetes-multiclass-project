@@ -209,7 +209,7 @@ def compare_models(results: dict) -> pd.DataFrame:
 
     This function aggregates evaluation metrics from multiple models
     into a single DataFrame for easy comparison. Models are sorted
-    by Recall (our primary optimization metric).
+    by Recall_Diabetes (our primary optimization metric).
 
     Args:
         results: Dictionary of {model_name: metrics_dict}
@@ -225,8 +225,8 @@ def compare_models(results: dict) -> pd.DataFrame:
     # Convert results dictionary to DataFrame
     comparison = pd.DataFrame(results).T
 
-    # Sort by Recall (descending) - our primary metric
-    comparison = comparison.sort_values("Recall", ascending=False)
+    # Sort by Recall_Diabetes (descending) - our primary metric
+    comparison = comparison.sort_values("Recall_Diabetes", ascending=False)
 
     return comparison
 
