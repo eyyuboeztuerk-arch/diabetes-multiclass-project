@@ -53,6 +53,26 @@ def plot_target_distribution(y: pd.Series, title: str = "Target Variable Distrib
     plt.tight_layout()
     plt.show()
 
-    
+
+def plot_correlation_matrix(df: pd.DataFrame, figsize: tuple = (16, 14)) -> None:
+    """
+    Visualizes the correlation matrix.
+
+    Args:
+        df: DataFrame with features
+        figsize: Figure size
+    """
+    plt.figure(figsize=figsize)
+    corr = df.corr()
+    sns.heatmap(
+        corr, annot=True, fmt=".2f", cmap='coolwarm', center=0,
+        vmin=-1, vmax=1, square=True, linewidths=0.5,
+        cbar_kws={"shrink": 0.8}, annot_kws={"size": 7}
+    )
+    plt.title("Correlation Matrix – All Features")
+    plt.tight_layout()
+    plt.show()
+
+
 
 
