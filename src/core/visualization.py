@@ -74,5 +74,42 @@ def plot_correlation_matrix(df: pd.DataFrame, figsize: tuple = (16, 14)) -> None
     plt.show()
 
 
+def plot_feature_distributions(
+    df: pd.DataFrame,
+    features: list,
+    target: str = 'Diabetes_012'
+) -> None:
+    """
+    Visualizes feature distributions grouped by target variable.
+
+    Args:
+        df: DataFrame with data
+        features: List of features to visualize
+        target: Name of the target column
+    """
+    n_features = len(features)
+    n_cols = 3
+    n_rows = (n_features + n_cols - 1) // n_cols
+
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(15, n_rows * 4))
+    axes = axes.flatten()
+
+    for idx, feature in enumerate(features):
+        df.groupby(target)[feature].mean().plot(
+            kind='bar', ax=axes[idx], color=CLASS_COLORS
+        )
+        axes[idx].set_title(f"{feature} by Diabetes Status")
+        axes[idx].set_xlabel("Diabetes Status")
+        axes[idx].set_ylabel(f"Mean {feature}")
+        axes[idx].set_xticklabels(['No DM', 'Pre', 'Diabetes'], rotation=0)
+
+    # Hide empty subplots
+    for idx in range(n_features, len(axes)):
+        axes[idx].axis('off')
+
+    plt.tight_layout()
+    plt.show()
+
+
 
 
