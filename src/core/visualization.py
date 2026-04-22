@@ -149,9 +149,7 @@ def plot_confusion_matrix(y_true, y_pred, title: str = "Confusion Matrix") -> No
 
 
 def plot_roc_curves(
-    y_test,
-    y_pred_proba,
-    title: str = "ROC Curves (One-vs-Rest)"
+    y_test, y_pred_proba, title: str = "ROC Curves (One-vs-Rest)"
 ) -> None:
     """
     Visualizes ROC curves for multi-class classification.
@@ -169,7 +167,7 @@ def plot_roc_curves(
     roc_auc = {}
 
     for i in range(n_classes):
-        fpr[i], tpr[i], _ = roc_curve(y_test_bin[:, i], y_pred_proba[:, i]) # pyright: ignore[reportIndexIssue]
+        fpr[i], tpr[i], _ = roc_curve(y_test_bin[:, i], y_pred_proba[:, i])  # pyright: ignore[reportIndexIssue]
         roc_auc[i] = auc(fpr[i], tpr[i])
 
     plt.figure(figsize=(10, 8))
@@ -177,15 +175,14 @@ def plot_roc_curves(
 
     for i, color, name in zip(range(n_classes), colors, CLASS_NAMES):
         plt.plot(
-            fpr[i], tpr[i], color=color, lw=2,
-            label=f'{name} (AUC = {roc_auc[i]:.2f})'
+            fpr[i], tpr[i], color=color, lw=2, label=f"{name} (AUC = {roc_auc[i]:.2f})"
         )
 
-    plt.plot([0, 1], [0, 1], 'k--', lw=2, label='Random Classifier')
+    plt.plot([0, 1], [0, 1], "k--", lw=2, label="Random Classifier")
     plt.xlim([0.0, 1.0])
     plt.ylim([0.0, 1.05])
-    plt.xlabel('False Positive Rate')
-    plt.ylabel('True Positive Rate')
+    plt.xlabel("False Positive Rate")
+    plt.ylabel("True Positive Rate")
     plt.title(title)
     plt.legend(loc="lower right")
     plt.grid(alpha=0.3)
@@ -193,3 +190,20 @@ def plot_roc_curves(
     plt.show()
 
 
+def plot_feature_importance(
+    importance_df: pd.DataFrame, title: str = "Feature Importance"
+) -> None:
+    """
+    Visualizes feature importance as a horizontal bar chart.
+
+    Args:
+        importance_df: DataFrame with 'Feature' and 'Importance' columns
+        title: Plot title
+    """
+    plt.figure(figsize=(10, 8))
+    sns.barplot(data=importance_df, x="Importance", y="Feature", palette="viridis")
+    plt.title(title)
+    plt.xlabel("Importance")
+    plt.ylabel("Feature")
+    plt.tight_layout()
+    plt.show()
