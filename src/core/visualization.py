@@ -207,3 +207,35 @@ def plot_feature_importance(
     plt.ylabel("Feature")
     plt.tight_layout()
     plt.show()
+
+
+def plot_model_comparison(comparison_df: pd.DataFrame) -> None:
+    """
+    Visualizes a comparison of model metrics.
+
+    Args:
+        comparison_df: DataFrame with model metrics
+                       (must contain 'Model' column + metric columns)
+    """
+    metrics = ["Accuracy", "F1 (Macro)", "F1 (Weighted)", "ROC-AUC"]
+
+    fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+    axes = axes.flatten()
+
+    for idx, metric in enumerate(metrics):
+        comparison_df.plot(
+            x="Model",
+            y=metric,
+            kind="bar",
+            ax=axes[idx],
+            color="steelblue",
+            legend=False,
+        )
+        axes[idx].set_title(f"{metric} Comparison")
+        axes[idx].set_xlabel("Model")
+        axes[idx].set_ylabel(metric)
+        axes[idx].set_xticklabels(comparison_df["Model"], rotation=45, ha="right")
+        axes[idx].grid(axis="y", alpha=0.3)
+
+    plt.tight_layout()
+    plt.show()
