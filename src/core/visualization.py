@@ -3,10 +3,13 @@ visualization.py
 Functions for data and results visualization
 """
 
+from itertools import cycle
+
 import matplotlib.pyplot as plt
 import pandas as pd
 import seaborn as sns
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import auc, confusion_matrix, roc_curve
+from sklearn.preprocessing import label_binarize
 
 # Styling
 sns.set_style("whitegrid")
@@ -143,3 +146,50 @@ def plot_confusion_matrix(y_true, y_pred, title: str = "Confusion Matrix") -> No
     plt.xlabel("Predicted Label")
     plt.tight_layout()
     plt.show()
+
+
+def plot_roc_curves(
+    y_test,
+    y_pred_proba,
+    title: str = "ROC Curves (One-vs-Rest)"
+) -> None:
+    """
+    Visualizes ROC curves for multi-class classification.
+
+    Args:
+        y_test: True test labels
+        y_pred_proba: Predicted probabilities (shape: n_samples x 3)
+        title: Plot title
+    """
+    y_test_bin = label_binarize(y_test, classes=[0, 1, 2])
+    n_classes = 3
+
+    fpr = {}
+    tpr = {}
+    roc_auc = {}
+
+    for i in range(n_classes):
+        fpr[i], tpr[i], _ = roc_curve(y_test_bin[:, i], y_pred_proba[:, i]) # pyright: ignore[reportIndexIssue]
+        roc_auc[i] = auc(fpr[i], tpr[i])
+
+    plt.figure(figsize=(10, 8))
+    colors = cycle(CLASS_COLORS)
+
+    for i, color, name in zip(range(n_classes), colors, CLASS_NAMES):
+        plt.plot(
+            fpr[i], tpr[i], color=color, lw=2,
+            label=f'{name} (AUC = {roc_auc[i]:.2f})'
+        )
+
+    plt.plot([0, 1], [0, 1], 'k--', lw=2, label='Random Classifier')
+    plt.xlim([0.0, 1.0])
+    plt.ylim([0.0, 1.05])
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title(title)
+    plt.legend(loc="lower right")
+    plt.grid(alpha=0.3)
+    plt.tight_layout()
+    plt.show()
+
+
